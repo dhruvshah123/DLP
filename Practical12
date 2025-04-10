@@ -1,0 +1,92 @@
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <stack>
+#include <map>
+using namespace std;
+
+struct Quadruple {
+    string op, operand1, operand2, result;
+};
+
+string optimizeExpression(const string& expression) {
+    istringstream iss(expression);
+    vector<string> tokens;
+    string token;
+    
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    
+    vector<string> tempStack;
+    for (const string& token : tokens) {
+        if (isdigit(token[0])) {
+            tempStack.push_back(token);
+        } else if (token == "+" || token == "-" || token == "*" || token == "/") {
+            while (tempStack.size() >= 2 && isdigit(tempStack.back()[0]) && isdigit(tempStack[tempStack.size()-2][0])) {
+                string b = tempStack.back(); tempStack.pop_back();
+                string a = tempStack.back(); tempStack.pop_back();
+                int result = (token == "+") ? stoi(a) + stoi(b) :
+                             (token == "-") ? stoi(a) - stoi(b) :
+                             (token == "*") ? stoi(a) * stoi(b) : stoi(a) / stoi(b);
+                tempStack.push_back(to_string(result));
+            }
+            tempStack.push_back(token);
+        } else {
+            tempStack.push_back(token);
+        }
+    }
+    
+    string optimizedExpr;
+    for (const string& t : tempStack) {
+        optimizedExpr += t + " ";
+    }
+    return optimizedExpr;
+}
+
+vector<Quadruple> generateQuadruples(const string& expression) {
+    istringstream iss(expression);
+    vector<string> tokens;
+    string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    
+    vector<Quadruple> quadruples;
+    stack<string> stack;
+    int tempCounter = 1;
+    
+    for (const string& token : tokens) {
+        if (isalnum(token[0])) {
+            stack.push(token);
+        } else if (token == "+" || token == "-" || token == "*" || token == "/") {
+            if (stack.size() >= 2) {
+                string b = stack.top(); stack.pop();
+                string a = stack.top(); stack.pop();
+                string tempVar = "t" + to_string(tempCounter++);
+                quadruples.push_back({token, a, b, tempVar});
+                stack.push(tempVar);
+            }
+        }
+    }
+    return quadruples;
+}
+
+void displayQuadruples(const vector<Quadruple>& quadruples) {
+    cout << "\nQuadruple Representation:" << endl;
+    cout << "Operator | Operand1 | Operand2 | Result" << endl;
+    cout << "-----------------------------------" << endl;
+    for (const auto& quad : quadruples) {
+        cout << quad.op << "\t   | " << quad.operand1 << "\t   | " << quad.operand2 << "\t   | " << quad.result << endl;
+    }
+}
+
+int main() {
+    string inputExpression = "5 + x - 3 * 2";
+    cout << "Original Expression: " << inputExpression << endl;
+    string optimizedExpression = optimizeExpression(inputExpression);
+    cout << "Optimized Expression: " << optimizedExpression << endl;
+    vector<Quadruple> quadruples = generateQuadruples(optimizedExpression);
+    displayQuadruples(quadruples);
+    return 0;
+}

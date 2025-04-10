@@ -1,0 +1,134 @@
+1) Write a program to identify and extract all numbers from input string and display them one by one in new line. 
+Code:
+
+
+          %{
+          #include <stdio.h>
+          %}
+          
+          %%
+          
+          [0-9]+   { printf("%s\n", yytext); }  // Match numbers and print them
+          .        { }  // Ignore non-numeric characters
+          
+          %%
+          
+          int main() {
+              yylex();
+              return 0;
+          }
+          
+          int yywrap() {
+              return 1;
+          }
+
+
+2) Write a program to replace the word "charusat" with “university” in the input text.
+Code:
+
+
+          %{
+          #include <stdio.h>
+          %}
+          
+          %%
+          [Cc]harusat    printf("university");
+          .              putchar(yytext[0]); 
+          \n             putchar('\n');
+          %%
+          
+          int main() {
+              yylex();
+              return 0;
+          }
+          
+          int yywrap() {
+              return 1;
+          }
+
+3) Write a program to count number of characters, word and lines from the input file.
+Code:
+
+
+          %{
+          #include <stdio.h>
+          
+          int char_count = 0, word_count = 0, line_count = 0;
+          %}
+          
+          %%
+          \n          { line_count++; char_count++; }  // Count newlines and characters
+          [ \t]+      { char_count += yyleng; }       // Count spaces and tabs
+          [a-zA-Z0-9\+\=]+ { word_count++; char_count += yyleng; } // Count words and characters
+          .           { char_count++; }               // Count other characters
+          %%
+          
+          int main() {
+              yylex();  // Start lexical analysis
+          
+              // If there's any input, adjust line_count for the last line if not ending with newline
+              if (char_count > 0 && line_count == 0) {
+                  line_count = 1;  // In case the input doesn't end with a newline
+              }
+          
+              // Handle edge case if the last line doesn't end with a newline, ensuring line_count is accurate
+              if (line_count == 0) {
+                  line_count = 1;  // If no line count increment has occurred, treat as one line
+              }
+          
+              printf("Characters : %d\n", char_count);
+              printf("Words : %d\n", word_count);
+              printf("Lines : %d\n", line_count);
+          
+              return 0;
+          }
+          
+          int yywrap() {
+              return 1;
+          }
+
+4) Write a program which validate the password as per given rules. 
+- length can be 9 to 15 characters  
+- includes lower case letter, upper case letter, digit, symbols (*, ; # $ @) 
+- minimum count for each category must be one 
+Code:
+
+
+          %{
+          #include <stdio.h>
+          #include <string.h>
+          #include <ctype.h>
+          
+          int has_lower = 0, has_upper = 0, has_digit = 0, has_symbol = 0;
+          int length = 0;
+          
+          void check_password();
+          %}
+          
+          %%
+          
+          [a-z]      { has_lower = 1; length++; }
+          [A-Z]      { has_upper = 1; length++; }
+          [0-9]      { has_digit = 1; length++; }
+          [*;#$@]    { has_symbol = 1; length++; }
+          .          { length++; }
+          \n         { check_password(); return 0; }
+          
+          %%
+          
+          void check_password() {
+              if (length >= 9 && length <= 15 && has_lower && has_upper && has_digit && has_symbol) {
+                  printf("Valid password\n");
+              } else {
+                  printf("Invalid password\n");
+              }
+          }
+          
+          int main() {
+              yylex();
+              return 0;
+          }
+          
+          int yywrap() {
+              return 1;
+          }

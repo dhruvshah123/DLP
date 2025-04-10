@@ -1,0 +1,159 @@
+#include<bits/stdc++.h>
+
+using namespace std;
+
+const int PRECEDENCE[] = {0, 1, 1, 2, 2, 3};
+const char ASSOCIATIVITY[] = {'L', 'L', 'L', 'L', 'R'};
+
+int getPrecedence(char op) {
+    switch (op) {
+        case '+': return PRECEDENCE[1];
+        case '-': return PRECEDENCE[2];
+        case '*': return PRECEDENCE[3];
+        case '/': return PRECEDENCE[4];
+        case '^': return PRECEDENCE[5];
+        default: return -1;
+    }
+}
+
+char getAssociativity(char op) {
+    switch (op) {
+        case '+': return ASSOCIATIVITY[0];
+        case '-': return ASSOCIATIVITY[1];
+        case '*': return ASSOCIATIVITY[2];
+        case '/': return ASSOCIATIVITY[3];
+        case '^': return ASSOCIATIVITY[4];
+        default: return 'L';
+    }
+}
+
+double applyOperator(char op, double a, double b) {
+    switch (op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': 
+            if (b == 0) throw runtime_error("Division by zero");
+            return a / b;
+        case '^': return pow(a, b);
+        default: throw runtime_error("Invalid operator");
+    }
+}
+
+vector<string> tokenize(const string &expression) {
+    vector<string> tokens;
+    string token;
+    for (size_t i = 0; i < expression.size(); ++i) {
+        char c = expression[i];
+        if (isspace(c)) continue;
+        if (isdigit(c) || c == '.') {
+            token += c;
+        } else {
+            if (!token.empty()) {
+                tokens.push_back(token);
+                token.clear();
+            }
+            tokens.push_back(string(1, c));
+        }
+    }
+    if (!token.empty()) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+vector<string> toRPN(const vector<string> &tokens) {
+    vector<string> output;
+    stack<string> operators;
+    
+    for (const string &token : tokens) {
+        if (isdigit(token[0]) || (token.size() > 1 && isdigit(token[1]))) {
+            output.push_back(token);
+        } else if (token == "+" || token == "-" || token == "*" || token == "/" || token == "^") {
+            while (!operators.empty() && operators.top() != "(") {
+                char top = operators.top()[0];
+                if ((getPrecedence(top) > getPrecedence(token[0])) ||
+                    (getPrecedence(top) == getPrecedence(token[0]) && getAssociativity(token[0]) == 'L')) {
+                    output.push_back(operators.top());
+                    operators.pop();
+                } else {
+                    break;
+                }
+            }
+            operators.push(token);
+        } else if (token == "(") {
+            operators.push(token);
+        } else if (token == ")") {
+            while (!operators.empty() && operators.top() != "(") {
+                output.push_back(operators.top());
+                operators.pop();
+            }
+            if (operators.empty() || operators.top() != "(") {
+                throw runtime_error("Mismatched parentheses");
+            }
+            operators.pop(); 
+        } else {
+            throw runtime_error("Invalid token");
+        }
+    }
+    
+    while (!operators.empty()) {
+        if (operators.top() == "(" || operators.top() == ")") {
+            throw runtime_error("Mismatched parentheses");
+        }
+        output.push_back(operators.top());
+        operators.pop();
+    }
+    
+    return output;
+}
+
+double evaluateRPN(const vector<string> &rpn) {
+    stack<double> operands;
+    
+    for (const string &token : rpn) {
+        if (isdigit(token[0]) || (token.size() > 1 && isdigit(token[1]))) {
+            operands.push(stod(token));
+        } else {
+            if (operands.size() < 2) {
+                throw runtime_error("Invalid expression");
+            }
+            double b = operands.top(); operands.pop();
+            double a = operands.top(); operands.pop();
+            double result = applyOperator(token[0], a, b);
+            operands.push(result);
+        }
+    }
+    
+    if (operands.size() != 1) {
+        throw runtime_error("Invalid expression");
+    }
+    
+    return operands.top();
+}
+
+double evaluate(const string &expression) {
+    try {
+        vector<string> tokens = tokenize(expression);
+        if (tokens.empty()) throw runtime_error("Empty expression");
+        vector<string> rpn = toRPN(tokens);
+        return evaluateRPN(rpn);
+    } catch (const exception &e) {
+        throw runtime_error(string("Invalid expression: ") + e.what());
+    }
+}
+
+int main() {
+    string input;
+    cout << "Enter an arithmetic expression: ";
+    getline(cin, input);
+
+    try {
+        double result = evaluate(input);
+        cout << "Result = " << result << endl;
+    } catch (const exception &e) {
+        cout << e.what() << endl;
+    }
+
+    return 0;
+}

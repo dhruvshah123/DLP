@@ -1,0 +1,137 @@
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+map<char, set<string>> first, follow;
+map<char, vector<string>> productions;
+set<char> nonTerminals;
+
+void computeFirst(char nt);
+void computeFollow(char nt);
+
+void addToSet(set<string> &dest, const set<string> &src, bool includeEpsilon) {
+    for (const string &str : src) {
+        if (str != "ε" || includeEpsilon) {
+            dest.insert(str);
+        }
+    }
+}
+
+void computeFirst(char nt) {
+    if (!first[nt].empty()) return;
+    
+    for (const string &prod : productions[nt]) {
+        if (islower(prod[0]) || prod[0] == '(' || prod[0] == ')') {
+            first[nt].insert(string(1, prod[0]));
+        } else {
+            int i = 0;
+            while (i < prod.size()) {
+                char symbol = prod[i];
+                if (string(1, symbol) == "ε") {
+                    first[nt].insert("ε");
+                    break;
+                }
+                computeFirst(symbol);
+                addToSet(first[nt], first[symbol], true);
+                if (first[symbol].find("ε") == first[symbol].end()) break;
+                i++;
+            }
+        }
+    }
+}
+
+void computeFollow(char nt) {
+    if (!follow[nt].empty()) return;
+    
+    if (nt == 'S') follow[nt].insert("$");
+    
+    for (auto &rule : productions) {
+        char lhs = rule.first;
+        for (const string &prod : rule.second) {
+            for (int i = 0; i < prod.size(); i++) {
+                if (prod[i] == nt) {
+                    int j = i + 1;
+                    while (j < prod.size()) {
+                        char nextSymbol = prod[j];
+                        if (islower(nextSymbol) || nextSymbol == '(' || nextSymbol == ')') {
+                            follow[nt].insert(string(1, nextSymbol));
+                            break;
+                        } else {
+                            computeFirst(nextSymbol);
+                            addToSet(follow[nt], first[nextSymbol], false);
+                            if (first[nextSymbol].find("ε") == first[nextSymbol].end()) break;
+                        }
+                        j++;
+                    }
+                    if (j == prod.size() && nt != lhs) {
+                        computeFollow(lhs);
+                        addToSet(follow[nt], follow[lhs], true);
+                    }
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    productions['S'] = {"ABC", "D"};
+    productions['A'] = {"a", "ε"};
+    productions['B'] = {"b", "ε"};
+    productions['C'] = {"(S)", "c"};
+    productions['D'] = {"AC"};
+    
+    // int nonTr;
+    // cout<<"Enter number of non terminals : ";
+    // cin>>nonTr;
+    // cout<<"Enter all non terminal names";
+    // for(int i = 0;i<nonTr;i++){
+    //     char c;
+    //     cin>>c;
+    //     nonTerminals.insert(c);
+    // }
+    
+    // int prods;
+    // cout<<"Enter number of non productions : ";
+    // cin>>prods;
+    // for(int i = 0;i<prods;i++){
+    //     char c;
+    //     cout<<"Enter non terminal for production : ";
+    //     cin>>c;
+    //     cout<<"Enter production : ";
+    //     string s;
+    //     cin>>s;
+    //     productions[c].push_back(s); 
+    // }
+    nonTerminals = {'S', 'A', 'B', 'C', 'D'};
+    
+    for (char nt : nonTerminals) {
+        computeFirst(nt);
+    }
+    
+    for (char nt : nonTerminals) {
+        computeFollow(nt);
+    }
+    
+    cout << "First Sets:\n";
+    for (char nt : nonTerminals) {
+        cout << "First(" << nt << ") = { ";
+        for (const string &str : first[nt]) {
+            cout << str << " ";
+        }
+        cout << "}\n";
+    }
+    
+    cout << "\nFollow Sets:\n";
+    for (char nt : nonTerminals) {
+        cout << "Follow(" << nt << ") = { ";
+        for (const string &str : follow[nt]) {
+            cout << str << " ";
+        }
+        cout << "}\n";
+    }
+    
+    return 0;
+}

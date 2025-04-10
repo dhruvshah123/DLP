@@ -1,0 +1,57 @@
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+
+void yyerror(const char *s);
+int yylex(void);
+extern char *yytext;
+%}
+
+%token I B T A E_TOKEN  /* Changed from E to E_TOKEN */
+
+%%
+start   : S       { printf("Valid string\n"); return 0; }
+        ;
+
+S       : I E T S Sprime
+        | A
+        ;
+
+Sprime  : E_TOKEN S  /* Changed from E to E_TOKEN */
+        | /* epsilon */
+        ;
+
+E       : B
+        ;
+%%
+
+void yyerror(const char *s) {
+    printf("Invalid string\n");
+}
+
+int main(void) {
+    int result = yyparse();
+    return result;
+}
+
+CODE(lexer.l):
+%{
+#include <stdio.h>
+#include "y.tab.h"
+%}
+
+%%
+i       { return I; }
+b       { return B; }
+t       { return T; }
+a       { return A; }
+e       { return E_TOKEN; }  /* Changed from E to E_TOKEN */
+\n      { return 0; }  /* End of input */
+[ \t]   { /* Ignore whitespace */ }
+.       { return yytext[0]; }  /* Catch any other character */
+%%
+
+int yywrap() {
+    return 1;
+}

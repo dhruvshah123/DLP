@@ -1,0 +1,169 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <set>
+#include <stack>
+#include <iomanip>
+
+using namespace std;
+
+// Function to compute First of a production
+set<string> get_first_of_production(const vector<string>& production, const map<string, set<string>>& first_sets) {
+    set<string> first;
+    
+    for (const string& symbol : production) {
+        if (first_sets.find(symbol) != first_sets.end()) { // If symbol has a FIRST set
+            first.insert(first_sets.at(symbol).begin(), first_sets.at(symbol).end());
+            if (first_sets.at(symbol).find("ε") == first_sets.at(symbol).end()) {
+                break; // Stop if ε is not in FIRST(symbol)
+            }
+        } else {
+            first.insert(symbol);
+            break;
+        }
+    }
+    
+    return first;
+}
+
+// Function to construct the LL(1) parsing table
+map<string, map<string, string>> construct_parsing_table(
+    const map<string, vector<vector<string>>>& grammar,
+    const map<string, set<string>>& first_sets,
+    const map<string, set<string>>& follow_sets,
+    bool& is_ll1
+) {
+    map<string, map<string, string>> parsing_table;
+    is_ll1 = true;
+
+    for (auto it = grammar.begin(); it != grammar.end(); ++it) {
+        string non_terminal = it->first;
+        const vector<vector<string>>& productions = it->second;
+
+        for (const auto& production : productions) {
+            set<string> first_set = get_first_of_production(production, first_sets);
+
+            for (const string& terminal : first_set) {
+                if (terminal != "ε") {
+                    if (parsing_table[non_terminal].count(terminal)) {
+                        is_ll1 = false; // Conflict detected
+                    }
+                    parsing_table[non_terminal][terminal] = "";
+                    for (const string& symbol : production) {
+                        parsing_table[non_terminal][terminal] += symbol;
+                    }
+                }
+            }
+
+            // If ε is in the first set, add Follow(non_terminal) to the table
+            if (first_set.find("ε") != first_set.end()) {
+                for (const string& terminal : follow_sets.at(non_terminal)) {
+                    if (parsing_table[non_terminal].count(terminal)) {
+                        is_ll1 = false;
+                    }
+                    parsing_table[non_terminal][terminal] = "ε";
+                }
+            }
+        }
+    }
+    
+    return parsing_table;
+}
+
+// Function to simulate the parsing process
+string parse_string(const map<string, map<string, string>>& parsing_table, const string& start_symbol, const string& input_string) {
+    stack<string> stk;
+    stk.push("$");
+    stk.push(start_symbol);
+    
+    string augmented_input = input_string + "$";
+    int index = 0;
+    
+    cout << "\nParsing Input String: " << input_string << endl;
+
+    while (!stk.empty()) {
+        string top = stk.top();
+        stk.pop();
+
+        if (index < augmented_input.size() && top == string(1, augmented_input[index])) {
+            index++; // Terminal matches, move input pointer
+        } 
+        else if (parsing_table.count(top) && parsing_table.at(top).count(string(1, augmented_input[index]))) {
+            string production = parsing_table.at(top).at(string(1, augmented_input[index]));
+            if (production != "ε") {
+                for (int i = production.size() - 1; i >= 0; --i) {
+                    stk.push(string(1, production[i])); // Push production in reverse
+                }
+            }
+        } 
+        else {
+            return "Invalid string";
+        }
+    }
+
+    return (index == augmented_input.size()) ? "Valid string" : "Invalid string";
+}
+
+// Function to print the parsing table
+void print_parsing_table(const map<string, map<string, string>>& parsing_table) {
+    cout << "\nPredictive Parsing Table:\n";
+    cout << setw(10) << "Non-Term" << " | ";
+    
+    set<string> terminals;
+    for (const auto& row : parsing_table) {
+        for (const auto& col : row.second) {
+            terminals.insert(col.first);
+        }
+    }
+    
+    for (const auto& terminal : terminals) {
+        cout << setw(5) << terminal << " | ";
+    }
+    cout << "\n------------------------------------------------------------\n";
+
+    for (const auto& row : parsing_table) {
+        cout << setw(10) << row.first << " | ";
+        for (const auto& terminal : terminals) {
+            if (row.second.count(terminal)) {
+                cout << setw(5) << row.second.at(terminal) << " | ";
+            } else {
+                cout << setw(5) << "-" << " | ";
+            }
+        }
+        cout << endl;
+    }
+}
+
+int main() {
+    // Grammar representation
+    map<string, vector<vector<string>>> grammar = {
+        {"S", {{"a", "b", "c"}, {"a", "c"}, {"(", "a", "b", "c", ")"}, {"c"}, {"(", "a", "c", ")"}}},
+        {"A", {{"a"}, {"(", ")"}, {"(", "a", "b", ")"}, {"a", "b", "c", "a", "b", "c"}, {"b"}}}
+    };
+
+    // First sets
+    map<string, set<string>> first_sets = {
+        {"S", {"a", "(", "c"}},
+        {"A", {"a", "(", "b"}}
+    };
+
+    // Follow sets
+    map<string, set<string>> follow_sets = {
+        {"S", {"$", ")"}},
+        {"A", {"$", ")"}}
+    };
+
+    bool is_ll1;
+    map<string, map<string, string>> parsing_table = construct_parsing_table(grammar, first_sets, follow_sets, is_ll1);
+
+    // Print the predictive parsing table
+    print_parsing_table(parsing_table);
+    
+    cout << (is_ll1 ? "\nGrammar is LL(1)" : "\nGrammar is NOT LL(1)") << endl;
+
+    // Parse a sample string
+    string input_string = "ac";
+    cout << "\nValidation Result: " << parse_string(parsing_table, "S", input_string) << endl;
+
+    return 0;
+}
